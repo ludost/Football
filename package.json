@@ -1,0 +1,30 @@
+{
+  "name": "Football trainer",
+  "version": "0.0.1",
+  "description": "",
+  "keywords": "Football",
+  "license": "MIT",
+  "author": "Ludo Stellingwerff",
+  "scripts": {
+    "prod": "npm run build",
+    "build": "parcel build index.html",
+    "dev": "rimraf ./dist && concurrently --kill-others \"node ./api/app.js\" \"parcel index.html --open\"",
+    "start": "npm run build && npm run dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "concurrently": "^6.5.1",
+    "parcel-bundler": "^1.12.4",
+    "rimraf":"^3.0.2",
+    "sass": "^1.45.1"
+  },
+  "dependencies": {
+    "@popperjs/core": "^2.11.0",
+    "bootstrap": "^5.1.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "express": "^4.17.2",
+    "morgan": "^1.10.0",
+    "ws": "^8.4.0"
+  }
+}
