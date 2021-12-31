@@ -1,11 +1,4 @@
-const incomingEventBus = new EventTarget()
-class CustomEvent extends Event {
-  constructor(message, data) {
-    super(message, data)
-    this.detail = data.detail
-  }
-}
-
+//Server setup:
 const express = require('express');
 const cors = require('cors')
 const path = require('path');
@@ -30,47 +23,6 @@ app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
 app.use(express.static(path.join(__dirname, '../dist')))
 
-require('./mainHandler.js')(incomingEventBus)
-
-wss.broadcast = function (message) {
-  wss.clients.forEach(function each(client) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message)
-    }
-  })
-}
-wss.getClientById = function (id){
-  return wss.clients.entries.find(client => client.value.id === id)
-}
-
-wss.getUniqueID = function () {
-  function s4() {
-    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-  }
-  return s4() + s4() + '-' + s4();
-};
-
-// Handle Websocket requests
-wss.on('connection', function connection(ws) {
-  ws.id = wss.getUniqueID();
-  ws.on('message', function incoming(message) {
-    // read msg
-    // validate and parse the msg // add try cathc block
-    try {
-      let msg = JSON.parse(message)
-      console.log("incoming msg on the client_ws:", msg)
-      if (msg.type === "event"){
-        let incomingEvent = new CustomEvent(msg.topic, { detail: { viewer:ws.id, params:msg.params }});
-        incomingEventBus.dispatchEvent(incomingEvent)
-      } else{
-        console.error("Unknown Json method")
-      }
-    }
-    catch(e) {
-      console.error(e)
-    }
-  })
-})
 
 /**
  * Normalize a port into a number, string, or false.
@@ -127,3 +79,86 @@ function onListening() {
     : 'port ' + addr.port;
   console.log('API server, listening on ' + bind);
 }
+
+//Incoming message handling: Eventbus for routing event messages
+const outBus = {}
+const incomingEventBus = new EventTarget()
+class CustomEvent extends Event {
+  constructor (message, data) {
+    super(message, data)
+    this.detail = data.detail
+  }
+}
+require('./viewersHandler.js')(incomingEventBus,outBus)
+outBus.sendEventToClient = function (client, topic, params){
+  return outBus.sendToClient(client, JSON.stringify({ type:"event", topic: topic, params: params }))
+}
+outBus.sendEventToId = function (id, topic, params){
+  return outBus.sendToId(id, JSON.stringify({ type:"event", topic: topic, params: params }))
+}
+outBus.sendToClient = function (client, message){
+  if (client.readyState === WebSocket.OPEN) {
+    console.log("Sending message:" + message)
+    client.send(message)
+    return Promise.resolve()
+  } else {
+    return Promise.reject("Client not ready!")
+  }
+}
+outBus.sendToId = function (id, message){
+  return new Promise((resolve, reject) => {
+    outBus.getClientById(id).then(
+      (client) => {
+        outBus.sendToClient(client, message).then(()=>resolve()).catch((error)=>reject(error))
+      }
+    ).catch (
+      (error) => reject(error)
+    )
+  })
+}
+outBus.broadcast = function (message) {
+  let promises = []
+  wss.clients.forEach(function each(client) {
+     promises.push(outBus.sendToClient(client,message))
+  })
+  return Promise.all(promises)
+}
+outBus.getClientById = function (id){
+  return new Promise((resolve, reject) => {
+    wss.clients.forEach(function each (client) {
+      if (client.wsid == id) {
+        resolve(client)
+      }
+    })
+    reject("Client not found!")
+  })
+}
+//Websocket handling
+wss.getUniqueID = function () {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  }
+  return s4() + s4() + '-' + s4();
+};
+
+// Handle Websocket requests
+wss.on('connection', function connection(ws) {
+  ws.wsid = wss.getUniqueID();
+  ws.on('message', function incoming(message) {
+    // read msg
+    // validate and parse the msg // add try cathc block
+    try {
+      let msg = JSON.parse(message)
+      console.log("incoming msg on the client_ws:", msg)
+      if (msg.type === "event"){
+        let incomingEvent = new CustomEvent(msg.topic, { detail: { wsid:ws.wsid, params:msg.params }});
+        incomingEventBus.dispatchEvent(incomingEvent)
+      } else{
+        console.error("Unknown Json method")
+      }
+    }
+    catch(e) {
+      console.error(e)
+    }
+  })
+})

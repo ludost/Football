@@ -20,6 +20,10 @@ wsMaster.onmessage = (event) => {
   }
 }
 
+wsMaster.sendEvent = function (topic, params){
+  wsMaster.send(JSON.stringify({ type: 'event', topic: topic, params: params }))
+}
+
 wsMaster.onopen = () => {
   console.log('ws open');
   incomingEventBus.dispatchEvent(new CustomEvent("websocket", {detail: { open: true }}))
