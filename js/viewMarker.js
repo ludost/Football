@@ -5,8 +5,8 @@ let Marker = function(exportObj){
     exportObj = viewObj()
   }
   exportObj.remote.type = "marker"
-  exportObj.local.glTF = new URL ( "../img/markerRood.glb", import.meta.url)
-  exportObj.local.dragable = true
+  exportObj.local.glTF = new URL ( "../img/marker.glb", import.meta.url)
+  exportObj.local.draggable = true
   return exportObj
 }
 conv.add("marker", Marker)
