@@ -105,4 +105,5 @@ dist
 .tern-port
 .idea
 .editorconfig
-/blender/Football pitch.blend1
+/blender/*.blend1
+/blender/Football Goal
